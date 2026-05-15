@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Al Hafiz Electronics — Admin Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script>tailwindcss.config={theme:{extend:{colors:{wa:{DEFAULT:'#25D366',dark:'#128C7E',darker:'#075E54'},panel:{bg:'#0f172a',card:'#1e293b',hover:'#334155'}}}}}</script>
+<style>
+*{font-family:'Inter',sans-serif}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0f172a}::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.page{display:none}.page.active{display:block}
+.sidebar-link.active{background:linear-gradient(135deg,#075E54,#128C7E);color:#fff}
+.bubble-in{background:#1e293b;border-radius:0 12px 12px 12px}.bubble-out{background:#075E54;border-radius:12px 0 12px 12px}
+.toast{animation:slideIn .3s ease}@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.fade-in{animation:fadeIn .3s ease}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.stat-card{transition:all .3s}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 25px rgba(37,211,102,.15)}
+.modal-backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}
+.badge{font-size:.65rem;padding:2px 8px;border-radius:9999px}
+</style>
+</head>
+<body class="bg-panel-bg text-gray-200 min-h-screen flex">
+<!-- TODO: Add authentication layer -->
+
+<!-- Offline Banner -->
+<div id="offlineBanner" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center py-2 text-sm font-medium z-50">⚠️ Backend Offline — Reconnecting...</div>
+
+<!-- Sidebar -->
+<aside id="sidebar" class="w-64 bg-panel-card border-r border-gray-700/50 min-h-screen flex flex-col fixed left-0 top-0 z-40 transition-transform lg:translate-x-0 -translate-x-full">
+<div class="p-5 border-b border-gray-700/50">
+ <div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-wa to-wa-dark flex items-center justify-center text-white font-bold text-lg">A</div>
+  <div><h1 class="font-bold text-white text-sm">Al Hafiz Electronics</h1><p class="text-[10px] text-gray-400">Admin Panel</p></div>
+ </div>
+</div>
+<nav class="flex-1 p-3 space-y-1" id="nav">
+ <a href="#" data-page="dashboard" class="sidebar-link active flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">📊 Dashboard</a>
+ <a href="#" data-page="catalog" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">📦 Catalog</a>
+ <a href="#" data-page="orders" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">🛒 Orders</a>
+ <a href="#" data-page="chat" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">💬 Live Chat</a>
+ <a href="#" data-page="broadcast" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">📢 Broadcast</a>
+ <a href="#" data-page="leads" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">👥 Leads</a>
+ <a href="#" data-page="rules" class="sidebar-link flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-panel-hover transition-all">⚙️ Rules</a>
+</nav>
+<div class="p-4 border-t border-gray-700/50 text-xs text-gray-500 text-center">v1.0 · WhatsApp Commerce</div>
+</aside>
+
+<!-- Mobile Toggle -->
+<button id="menuBtn" class="lg:hidden fixed top-4 left-4 z-50 bg-panel-card p-2 rounded-lg border border-gray-700" onclick="document.getElementById('sidebar').classList.toggle('-translate-x-full')">☰</button>
+
+<!-- Main Content -->
+<main class="flex-1 lg:ml-64 p-4 md:p-6">
+
+<!-- DASHBOARD -->
+<section id="pg-dashboard" class="page active fade-in">
+<h2 class="text-2xl font-bold mb-6 text-white">📊 Dashboard</h2>
+<div id="statsCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+ <div class="lg:col-span-2 bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-4">Recent Orders</h3>
+  <div id="recentOrders" class="overflow-x-auto"></div>
+ </div>
+ <div class="bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-4">System Health</h3>
+  <div id="healthPanel"></div>
+ </div>
+</div>
+</section>
+
+<!-- CATALOG -->
+<section id="pg-catalog" class="page fade-in">
+<div class="flex justify-between items-center mb-6">
+ <h2 class="text-2xl font-bold text-white">📦 Catalog Manager</h2>
+ <button onclick="openModal('catModal')" class="bg-wa hover:bg-wa-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">+ Add Category</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+ <div class="bg-panel-card rounded-xl p-4 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-3">Categories</h3>
+  <div id="catList" class="space-y-2"></div>
+ </div>
+ <div class="lg:col-span-2 bg-panel-card rounded-xl p-4 border border-gray-700/50">
+  <div class="flex justify-between items-center mb-3">
+   <h3 class="text-sm font-semibold text-gray-400" id="prodTitle">Select a category</h3>
+   <button id="addProdBtn" onclick="openModal('prodModal')" class="hidden bg-wa hover:bg-wa-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">+ Add Product</button>
+  </div>
+  <div id="prodList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+ </div>
+</div>
+</section>
+
+<!-- ORDERS -->
+<section id="pg-orders" class="page fade-in">
+<div class="flex flex-wrap justify-between items-center mb-6 gap-3">
+ <h2 class="text-2xl font-bold text-white">🛒 Order Management</h2>
+ <div class="flex gap-2">
+  <button onclick="openModal('orderModal')" class="bg-wa hover:bg-wa-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">+ New Order</button>
+  <a href="/api/orders/export/orders.csv" class="bg-panel-hover hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">📥 Export CSV</a>
+ </div>
+</div>
+<div id="orderTabs" class="flex flex-wrap gap-2 mb-4"></div>
+<div id="orderTable" class="bg-panel-card rounded-xl border border-gray-700/50 overflow-x-auto"></div>
+</section>
+
+<!-- LIVE CHAT -->
+<section id="pg-chat" class="page fade-in">
+<h2 class="text-2xl font-bold text-white mb-6">💬 Live Chat Monitor</h2>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4" style="height:calc(100vh - 160px)">
+ <div class="bg-panel-card rounded-xl border border-gray-700/50 flex flex-col overflow-hidden">
+  <div class="p-3 border-b border-gray-700/50 text-sm font-semibold text-gray-400">Active Chats</div>
+  <div id="chatList" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+ </div>
+ <div class="lg:col-span-2 bg-panel-card rounded-xl border border-gray-700/50 flex flex-col overflow-hidden">
+  <div id="chatHeader" class="p-3 border-b border-gray-700/50 flex justify-between items-center">
+   <span class="text-sm text-gray-400">Select a chat</span><div id="chatActions" class="hidden flex gap-2"></div>
+  </div>
+  <div id="chatMessages" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+  <div id="chatInput" class="hidden p-3 border-t border-gray-700/50">
+    <!-- Media preview bar (hidden by default) -->
+    <div id="chatMediaPreview" class="hidden mb-2 p-2 bg-panel-bg rounded-lg border border-gray-600 flex items-center gap-2">
+      <div id="chatMediaThumb" class="w-12 h-12 rounded bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0"></div>
+      <div class="flex-1 min-w-0">
+        <p id="chatMediaName" class="text-xs text-gray-300 truncate"></p>
+        <p id="chatMediaSize" class="text-[10px] text-gray-500"></p>
+      </div>
+      <button onclick="clearChatMedia()" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+    </div>
+    <!-- Input row -->
+    <div class="flex gap-2 items-end">
+      <div class="flex gap-1">
+        <button onclick="document.getElementById('chatImgInput').click()"
+          title="تصویر بھیجیں"
+          class="p-2 rounded-lg bg-panel-hover hover:bg-gray-600 text-gray-300 text-sm transition">🖼️</button>
+        <button onclick="document.getElementById('chatVidInput').click()"
+          title="ویڈیو بھیجیں"
+          class="p-2 rounded-lg bg-panel-hover hover:bg-gray-600 text-gray-300 text-sm transition">🎬</button>
+        <input type="file" id="chatImgInput" accept="image/jpeg,image/png,image/webp"
+          style="display:none" onchange="setChatMedia(event,'image')">
+        <input type="file" id="chatVidInput" accept="video/mp4,video/quicktime"
+          style="display:none" onchange="setChatMedia(event,'video')">
+      </div>
+      <input id="agentMsg" type="text" placeholder="جواب لکھیں یا میڈیا منتخب کریں..."
+        class="flex-1 bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:border-wa outline-none"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAgentReply();}">
+      <button onclick="sendAgentReply()"
+        class="bg-wa hover:bg-wa-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+        Send
+      </button>
+    </div>
+  </div>
+ </div>
+</div>
+</section>
+
+<!-- BROADCAST -->
+<section id="pg-broadcast" class="page fade-in">
+<h2 class="text-2xl font-bold text-white mb-6">📢 Broadcast Center</h2>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+ <div class="bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-3">Compose Message</h3>
+  <label class="block text-xs text-gray-400 mb-1">Template</label>
+  <select id="tplSelect" onchange="previewTemplate()" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3"><option value="">-- Custom Message --</option></select>
+  <div id="tplVars" class="mb-3"></div>
+  <label class="block text-xs text-gray-400 mb-1">Message</label>
+  <textarea id="bcMsg" rows="5" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" placeholder="Message text..."></textarea>
+  <label class="block text-xs text-gray-400 mb-1">Recipients (one number per line)</label>
+  <textarea id="bcRecipients" rows="4" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" placeholder="+923001234567&#10;+923009876543"></textarea>
+  <button onclick="sendBroadcast()" id="bcSendBtn" class="w-full bg-wa hover:bg-wa-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition">📢 Send Broadcast</button>
+  <div id="bcProgress" class="hidden mt-3 bg-panel-bg rounded-full h-2"><div id="bcBar" class="bg-wa h-2 rounded-full transition-all" style="width:0%"></div></div>
+ </div>
+ <div class="bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-3">Preview</h3>
+  <div id="bcPreview" class="bg-panel-bg rounded-xl p-4 text-sm whitespace-pre-wrap min-h-[200px] text-gray-300 border border-gray-700">Select a template or type a message</div>
+ </div>
+</div>
+</section>
+
+<!-- LEADS -->
+<section id="pg-leads" class="page fade-in">
+<div class="flex justify-between items-center mb-6">
+ <h2 class="text-2xl font-bold text-white">👥 Leads</h2>
+ <a href="/api/orders/export/leads.csv" class="bg-panel-hover hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">📥 Export CSV</a>
+</div>
+<div id="leadsTable" class="bg-panel-card rounded-xl border border-gray-700/50 overflow-x-auto"></div>
+</section>
+
+<!-- RULES -->
+<section id="pg-rules" class="page fade-in">
+<h2 class="text-2xl font-bold text-white mb-6">⚙️ Rule Engine</h2>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+ <div class="lg:col-span-2 bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <div class="flex justify-between items-center mb-4">
+   <h3 class="text-sm font-semibold text-gray-400">Keyword → Reply Rules</h3>
+   <button onclick="openModal('ruleModal')" class="bg-wa hover:bg-wa-dark text-white px-3 py-1.5 rounded-lg text-xs font-medium transition">+ Add Rule</button>
+  </div>
+  <div id="rulesTable" class="overflow-x-auto"></div>
+ </div>
+ <div class="bg-panel-card rounded-xl p-5 border border-gray-700/50">
+  <h3 class="text-sm font-semibold text-gray-400 mb-3">Test Rule Engine</h3>
+  <input id="ruleTestInput" type="text" placeholder="Type a test message..." class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" onkeyup="testRule()">
+  <div id="ruleTestResult" class="bg-panel-bg rounded-lg p-3 text-sm min-h-[80px] border border-gray-700 text-gray-400">Type a message to test</div>
+ </div>
+</div>
+</section>
+
+</main>
+
+<!-- Reusable Modal -->
+<div id="modalOverlay" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeModal()">
+ <div class="bg-panel-card rounded-2xl border border-gray-700/50 w-full max-w-lg max-h-[90vh] overflow-y-auto fade-in">
+  <div class="flex justify-between items-center p-5 border-b border-gray-700/50">
+   <h3 id="modalTitle" class="font-semibold text-white"></h3>
+   <button onclick="closeModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+  </div>
+  <div id="modalBody" class="p-5"></div>
+ </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toasts" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<!-- PLACEHOLDER: JavaScript will be appended -->
+<script>
+const API = '';
+let state = { activePage:'dashboard', selectedCat:null, selectedChat:null, chatInterval:null, orderFilter:'all', rules:{} };
+
+// ── Utilities ──
+async function api(path, opts={}) {
+ try {
+  const r = await fetch(API+path, {headers:{'Content-Type':'application/json'}, ...opts});
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error||`HTTP ${r.status}`); }
+  document.getElementById('offlineBanner').classList.add('hidden');
+  return r.headers.get('content-type')?.includes('json') ? r.json() : r.text();
+ } catch(e) {
+  if (e.message === 'Failed to fetch') document.getElementById('offlineBanner').classList.remove('hidden');
+  throw e;
+ }
+}
+function toast(msg, type='success') {
+ const d=document.createElement('div');
+ d.className=`toast px-4 py-3 rounded-lg text-sm font-medium shadow-lg ${type==='error'?'bg-red-600':type==='warning'?'bg-yellow-600':'bg-wa-dark'} text-white`;
+ d.textContent=msg; document.getElementById('toasts').appendChild(d);
+ setTimeout(()=>d.remove(), 3500);
+}
+function spinner(){return '<div class="flex justify-center py-8"><div class="w-8 h-8 border-2 border-wa border-t-transparent rounded-full spin"></div></div>';}
+function openModal(id){
+ const m=document.getElementById('modalOverlay'); m.classList.remove('hidden');
+ document.querySelectorAll('.modal-content').forEach(e=>e.classList.add('hidden'));
+ if(id==='catModal') showCatForm();
+ else if(id==='prodModal') showProdForm();
+ else if(id==='orderModal') showOrderForm();
+ else if(id==='ruleModal') showRuleForm();
+ else if(id==='confirmModal') {} // handled separately
+}
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
+function confirm_(msg,cb){
+ document.getElementById('modalTitle').textContent='Confirm';
+ document.getElementById('modalBody').innerHTML=`<p class="text-gray-300 mb-4">${msg}</p><div class="flex gap-3 justify-end"><button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-panel-hover text-sm">Cancel</button><button onclick="closeModal();(${cb.toString()})()" class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm">Delete</button></div>`;
+ document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+// ── Navigation ──
+document.getElementById('nav').addEventListener('click', e=>{
+ e.preventDefault(); const link=e.target.closest('[data-page]'); if(!link) return;
+ const pg=link.dataset.page;
+ document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active')); link.classList.add('active');
+ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+ document.getElementById('pg-'+pg).classList.add('active');
+ state.activePage=pg;
+ if(state.chatInterval){clearInterval(state.chatInterval);state.chatInterval=null;}
+ if(pg==='dashboard') loadDashboard();
+ else if(pg==='catalog') loadCategories();
+ else if(pg==='orders') loadOrders();
+ else if(pg==='chat') startChat();
+ else if(pg==='broadcast') loadTemplates();
+ else if(pg==='leads') loadLeads();
+ else if(pg==='rules') loadRules();
+ document.getElementById('sidebar').classList.add('-translate-x-full');
+});
+
+// ── DASHBOARD ──
+async function loadDashboard(){
+ document.getElementById('statsCards').innerHTML=spinner();
+ try{
+  const [ord, chats, diag] = await Promise.all([
+   api('/api/orders/').catch(()=>({orders:[]})),
+   api('/api/agents/chats').catch(()=>({sessions:[]})),
+   api('/api/status/diagnostics').catch(()=>({components:{},sessions:{}}))
+  ]);
+  const orders=ord.orders||[], sessions=chats.sessions||[], comp=diag.components||{}, sess=diag.sessions||{};
+  const stats=[
+   {label:'Total Orders',value:orders.length,icon:'🛒',color:'from-blue-500 to-blue-700'},
+   {label:'Active Chats',value:sess.total_active||sessions.length,icon:'💬',color:'from-wa to-wa-dark'},
+   {label:'Escalated',value:sess.escalated||0,icon:'🚨',color:'from-orange-500 to-red-500'},
+   {label:'Leads',value:'-',icon:'👥',color:'from-purple-500 to-purple-700'}
+  ];
+  api('/api/orders/leads').then(r=>{
+   const c=document.querySelector('[data-stat="Leads"]');if(c)c.textContent=r.leads?.length||0;
+  }).catch(()=>{});
+
+  document.getElementById('statsCards').innerHTML=stats.map(s=>`
+   <div class="stat-card bg-panel-card rounded-xl p-5 border border-gray-700/50">
+    <div class="flex justify-between items-start"><div><p class="text-xs text-gray-400 mb-1">${s.label}</p><p class="text-3xl font-bold text-white" data-stat="${s.label}">${s.value}</p></div>
+    <div class="w-10 h-10 rounded-lg bg-gradient-to-br ${s.color} flex items-center justify-center text-lg">${s.icon}</div></div>
+   </div>`).join('');
+
+  // Recent orders table
+  const recent=orders.slice(0,10);
+  document.getElementById('recentOrders').innerHTML=recent.length?`<table class="w-full text-sm"><thead><tr class="text-gray-400 text-xs border-b border-gray-700"><th class="pb-2 text-left">Order#</th><th class="pb-2 text-left">Customer</th><th class="pb-2 text-left">Product</th><th class="pb-2 text-right">Amount</th><th class="pb-2 text-left">Status</th></tr></thead><tbody>${recent.map(o=>`<tr class="border-b border-gray-700/50 hover:bg-panel-hover"><td class="py-2 text-wa font-medium">${o.order_number||'-'}</td><td class="py-2">${o.customer_name||o.customer_phone||'-'}</td><td class="py-2">${o.product_name||'-'}</td><td class="py-2 text-right">Rs. ${o.total_amount||o.unit_price||0}</td><td class="py-2"><span class="badge ${statusColor(o.status)}">${o.status||'pending'}</span></td></tr>`).join('')}</tbody></table>`:'<p class="text-gray-500 text-sm">No orders yet</p>';
+
+  // Health panel
+  const hItems=[
+   {name:'NestJS System',status:comp.existing_nestjs_system},
+   {name:'Redis Store',status:comp.redis_session_store},
+   {name:'AI Service',status:comp.ai_service},
+   {name:'WhatsApp/Twilio',status:comp.whatsapp_twilio},
+   {name:'Rule Engine',status:comp.rule_engine}
+  ];
+  document.getElementById('healthPanel').innerHTML=hItems.map(h=>{
+   const on=h.status&&(h.status.includes('enabled')||h.status.includes('connected')||h.status.includes('online'));
+   return `<div class="flex justify-between items-center py-2 border-b border-gray-700/30"><span class="text-sm">${h.name}</span><span class="flex items-center gap-1.5 text-xs ${on?'text-green-400':'text-red-400'}"><span class="w-2 h-2 rounded-full ${on?'bg-green-400':'bg-red-400'}"></span>${on?'Online':'Offline'}</span></div>`;
+  }).join('');
+ }catch(e){toast('Dashboard load failed: '+e.message,'error');}
+}
+function statusColor(s){const m={pending:'bg-yellow-500/20 text-yellow-400',confirmed:'bg-blue-500/20 text-blue-400',processing:'bg-purple-500/20 text-purple-400',shipped:'bg-cyan-500/20 text-cyan-400',delivered:'bg-green-500/20 text-green-400',cancelled:'bg-red-500/20 text-red-400'};return m[s]||m.pending;}
+
+// ── CATALOG ──
+async function loadCategories(){
+ document.getElementById('catList').innerHTML=spinner();
+ try{
+  const d=await api('/api/catalog/categories');
+  const cats=d.categories||[];
+  document.getElementById('catList').innerHTML=cats.length?cats.map(c=>`
+   <div class="p-3 rounded-lg bg-panel-bg hover:bg-panel-hover cursor-pointer transition border border-gray-700/30 ${state.selectedCat===c.id?'border-wa':''}" onclick="selectCategory('${c.id}','${c.name}')">
+    <div class="flex justify-between items-start">
+     <div><span class="text-lg mr-1">${c.emoji||'📦'}</span><span class="font-medium text-sm text-white">${c.name}</span>
+     <p class="text-xs text-gray-400 mt-0.5">${c.name_urdu||''}</p>
+     <div class="flex flex-wrap gap-1 mt-1">${(c.keywords||[]).map(k=>`<span class="badge bg-wa/20 text-wa">${k}</span>`).join('')}</div></div>
+     <div class="flex gap-1">
+      <button onclick="event.stopPropagation();editCategory('${c.id}')" class="text-gray-400 hover:text-wa text-xs p-1">✏️</button>
+      <button onclick="event.stopPropagation();deleteCategory('${c.id}')" class="text-gray-400 hover:text-red-400 text-xs p-1">🗑️</button>
+     </div>
+    </div>
+   </div>`).join(''):'<p class="text-gray-500 text-sm text-center py-4">No categories</p>';
+ }catch(e){toast('Failed to load categories','error');}
+}
+async function selectCategory(id,name){
+ state.selectedCat=id; document.getElementById('prodTitle').textContent=name+' Products';
+ document.getElementById('addProdBtn').classList.remove('hidden');
+ loadCategories(); loadProducts(id);
+}
+async function loadProducts(catId) {
+  document.getElementById('prodList').innerHTML = spinner();
+  try {
+    const d = await api('/api/catalog/products?category_id=' + catId);
+    const prods = d.products || [];
+    document.getElementById('prodList').innerHTML = prods.length ? prods.map(p => `
+      <div class="bg-panel-bg rounded-lg p-4 border border-gray-700/30 hover:border-gray-600 transition">
+        <div id="thumb-${p.id}" class="relative w-full h-24 bg-gray-700/30 rounded-lg mb-3 flex items-center justify-center text-3xl">
+          <div class="w-5 h-5 border-2 border-wa border-t-transparent rounded-full spin"></div>
+          ${p.has_video ? '<span class="absolute top-1 right-1 text-xs bg-black/60 rounded-full px-1">🎬</span>' : ''}
+        </div>
+        <h4 class="font-medium text-white text-sm">${p.name}</h4>
+        <p class="text-xs text-gray-400">${p.name_urdu || ''} ${p.brand ? '· ' + p.brand : ''}</p>
+        <div class="flex justify-between items-center mt-2">
+          <span class="text-wa font-bold text-sm">Rs. ${p.base_price || 0}</span>
+          <span class="badge ${p.in_stock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">${p.in_stock ? 'In Stock' : 'Out'}</span>
+        </div>
+        ${p.warranty_months ? `<p class="text-xs text-gray-500 mt-1">🛡️ ${p.warranty_months} months warranty</p>` : ''}
+        <div class="flex gap-1 mt-2 justify-end">
+          <button onclick="toggleStock('${p.id}', ${!p.in_stock})" class="text-xs px-2 py-1 rounded bg-panel-hover hover:bg-gray-600">${p.in_stock ? 'Mark OOS' : 'Mark In Stock'}</button>
+          <button onclick="deleteProduct('${p.id}')" class="text-xs px-2 py-1 rounded bg-red-600/20 hover:bg-red-600/40 text-red-400">🗑️</button>
+        </div>
+      </div>`).join('') : '<p class="text-gray-500 text-sm text-center py-8 col-span-2">No products in this category</p>';
+
+    prods.forEach(p => loadProdThumb(p.id));
+  } catch (e) {
+    toast('Failed to load products', 'error');
+  }
+}
+
+async function loadProdThumb(prodId) {
+  try {
+    const d = await api('/api/media/products/' + prodId + '/primary');
+    const el = document.getElementById('thumb-' + prodId);
+    if (!el) return;
+    if (d.url) {
+      el.innerHTML = `<img src="${d.url}" class="w-full h-full object-cover rounded-lg">`;
+    } else {
+      el.innerHTML = '📦';
+    }
+  } catch (e) {
+    const el = document.getElementById('thumb-' + prodId);
+    if (el) el.innerHTML = '📦';
+  }
+}
+function showCatForm(edit){
+ document.getElementById('modalTitle').textContent=edit?'Edit Category':'Add Category';
+ document.getElementById('modalBody').innerHTML=`
+  <input id="fCatName" placeholder="Name (e.g. fans)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" value="${edit?.name||''}">
+  <input id="fCatUrdu" placeholder="Name Urdu (e.g. پنکھے)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" value="${edit?.name_urdu||''}">
+  <input id="fCatEmoji" placeholder="Emoji (e.g. 🌀)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" value="${edit?.emoji||''}">
+  <input id="fCatKw" placeholder="Keywords (comma separated)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" value="${(edit?.keywords||[]).join(', ')}">
+  <input id="fCatDesc" placeholder="Description (optional)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3" value="${edit?.description||''}">
+  <button onclick="saveCat('${edit?.id||''}')" class="w-full bg-wa hover:bg-wa-dark text-white py-2 rounded-lg text-sm font-medium">Save Category</button>`;
+}
+async function saveCat(id){
+ const d={name:v('fCatName'),name_urdu:v('fCatUrdu'),emoji:v('fCatEmoji'),keywords:v('fCatKw').split(',').map(s=>s.trim()).filter(Boolean),description:v('fCatDesc')};
+ try{
+  if(id) await api('/api/catalog/categories/'+id,{method:'PATCH',body:JSON.stringify(d)});
+  else await api('/api/catalog/categories',{method:'POST',body:JSON.stringify(d)});
+  toast(id?'Category updated':'Category created'); closeModal(); loadCategories();
+ }catch(e){toast(e.message,'error');}
+}
+async function editCategory(id){
+ try{const d=await api('/api/catalog/categories/'+id);showCatForm(d.category);openModal('catModal');}catch(e){toast(e.message,'error');}
+}
+function deleteCategory(id){confirm_('Delete this category?',()=>api('/api/catalog/categories/'+id,{method:'DELETE'}).then(()=>{toast('Deleted');loadCategories();}).catch(e=>toast(e.message,'error')));}
+function deleteProduct(id){confirm_('Delete this product?',()=>api('/api/catalog/products/'+id,{method:'DELETE'}).then(()=>{toast('Deleted');if(state.selectedCat)loadProducts(state.selectedCat);}).catch(e=>toast(e.message,'error')));}
+async function toggleStock(id,val){try{await api('/api/catalog/products/'+id,{method:'PATCH',body:JSON.stringify({in_stock:val})});toast(val?'Marked in stock':'Marked out of stock');if(state.selectedCat)loadProducts(state.selectedCat);}catch(e){toast(e.message,'error');}}
+function showProdForm() {
+  document.getElementById('modalTitle').textContent = 'Add Product';
+  document.getElementById('modalBody').innerHTML = `
+    <!-- Product fields (same as before) -->
+    <input id="fProdName" placeholder="Product name (English)"
+      class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+    <input id="fProdUrdu" placeholder="Product name Urdu (پنکھا)"
+      class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <input id="fProdPrice" type="number" placeholder="Base price Rs."
+        class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+      <input id="fProdBrand" placeholder="Brand (GFC, Haier...)"
+        class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <input id="fProdModel" placeholder="Model"
+        class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+      <input id="fProdWarranty" type="number" placeholder="Warranty months"
+        class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+    </div>
+    <input id="fProdKw" placeholder="Keywords (comma separated)"
+      class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+    <textarea id="fProdDesc" placeholder="Description Urdu" rows="2"
+      class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-4"></textarea>
+
+    <!-- MEDIA TABS -->
+    <div class="flex rounded-lg overflow-hidden border border-gray-600 mb-3">
+      <button id="tabImgBtn" onclick="switchProdTab('image')"
+        class="flex-1 py-2 text-xs font-semibold bg-wa text-white transition">
+        🖼️ Images
+      </button>
+      <button id="tabVidBtn" onclick="switchProdTab('video')"
+        class="flex-1 py-2 text-xs font-semibold bg-panel-bg text-gray-400 transition">
+        🎬 Video
+      </button>
+    </div>
+
+    <!-- IMAGE PANEL -->
+    <div id="panelImg">
+      <div id="imgDropZone"
+        onclick="document.getElementById('fProdImgFile').click()"
+        ondragover="event.preventDefault();this.classList.add('border-wa')"
+        ondragleave="this.classList.remove('border-wa')"
+        ondrop="handleImgDrop(event)"
+        class="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-wa transition mb-3">
+        <div class="text-3xl mb-2">🖼️</div>
+        <p class="text-xs text-gray-400">Click ya drag & drop karein</p>
+        <p class="text-[10px] text-gray-500 mt-1">JPEG · PNG · WebP · Max 5MB each</p>
+      </div>
+      <input type="file" id="fProdImgFile" accept="image/jpeg,image/png,image/webp"
+        multiple style="display:none" onchange="handleImgSelect(event)">
+      <div id="imgProgressWrap" class="hidden mb-3">
+        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+          <span id="imgProgressLabel">Uploading...</span>
+          <span id="imgProgressPct">0%</span>
+        </div>
+        <div class="bg-panel-bg rounded-full h-1.5">
+          <div id="imgProgressBar" class="bg-wa h-1.5 rounded-full transition-all" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="imgPreviewGrid" class="grid grid-cols-4 gap-2"></div>
+    </div>
+
+    <!-- VIDEO PANEL -->
+    <div id="panelVid" class="hidden">
+      <div id="vidDropZone"
+        onclick="document.getElementById('fProdVidFile').click()"
+        ondragover="event.preventDefault();this.classList.add('border-purple-500')"
+        ondragleave="this.classList.remove('border-purple-500')"
+        ondrop="handleVidDrop(event)"
+        class="border-2 border-dashed border-gray-600 rounded-xl p-6 text-center cursor-pointer hover:border-purple-500 transition mb-3">
+        <div class="text-3xl mb-2">🎬</div>
+        <p class="text-xs text-gray-400">Click ya drag & drop karein</p>
+        <p class="text-[10px] text-gray-500 mt-1">MP4 · MOV · Max 50MB</p>
+      </div>
+      <input type="file" id="fProdVidFile" accept="video/mp4,video/quicktime"
+        style="display:none" onchange="handleVidSelect(event)">
+      <div id="vidProgressWrap" class="hidden mb-3">
+        <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+          <span id="vidProgressLabel">Uploading video...</span>
+          <span id="vidProgressPct">0%</span>
+        </div>
+        <div class="bg-panel-bg rounded-full h-1.5">
+          <div id="vidProgressBar" class="bg-purple-500 h-1.5 rounded-full transition-all" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="vidPreview"></div>
+    </div>
+
+    <!-- Save Button -->
+    <button id="saveProdBtn" onclick="saveProd()"
+      class="w-full bg-wa hover:bg-wa-dark text-white py-2.5 rounded-lg text-sm font-semibold mt-4 transition">
+      💾 Product Save کریں
+    </button>
+  `;
+  window._pendingImages = [];
+  window._pendingVideo = null;
+}
+
+function switchProdTab(tab) {
+  const isImg = tab === 'image';
+  document.getElementById('panelImg').classList.toggle('hidden', !isImg);
+  document.getElementById('panelVid').classList.toggle('hidden', isImg);
+  document.getElementById('tabImgBtn').className =
+    'flex-1 py-2 text-xs font-semibold transition ' +
+    (isImg ? 'bg-wa text-white' : 'bg-panel-bg text-gray-400');
+  document.getElementById('tabVidBtn').className =
+    'flex-1 py-2 text-xs font-semibold transition ' +
+    (!isImg ? 'bg-purple-600 text-white' : 'bg-panel-bg text-gray-400');
+}
+
+function handleImgSelect(e) {
+  addPendingImages(Array.from(e.target.files));
+  e.target.value = '';
+}
+function handleImgDrop(e) {
+  e.preventDefault();
+  document.getElementById('imgDropZone').classList.remove('border-wa');
+  addPendingImages(Array.from(e.dataTransfer.files)
+    .filter(f => ['image/jpeg','image/png','image/webp'].includes(f.type)));
+}
+function addPendingImages(files) {
+  const MAX = 5 * 1024 * 1024;
+  files.forEach(file => {
+    if (file.size > MAX) { toast(file.name + ' — max 5MB', 'error'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const idx = window._pendingImages.length;
+      window._pendingImages.push({dataUrl: e.target.result, mimeType: file.type, name: file.name});
+      const grid = document.getElementById('imgPreviewGrid');
+      const div = document.createElement('div');
+      div.className = 'relative aspect-square rounded-lg overflow-hidden bg-gray-700';
+      div.id = 'prevImg' + idx;
+      div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">
+        ${idx === 0 ? '<div class="absolute bottom-0 left-0 right-0 bg-wa/80 text-[9px] text-white text-center py-0.5 font-bold">PRIMARY</div>' : ''}
+        <button onclick="removePendingImg(${idx})"
+          class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center hover:bg-red-600">✕</button>`;
+      grid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function removePendingImg(idx) {
+  window._pendingImages.splice(idx, 1);
+  document.getElementById('imgPreviewGrid').innerHTML = '';
+  const copy = [...window._pendingImages];
+  window._pendingImages = [];
+  addPendingImages(copy.map(i => ({...i, _already_read: true})));
+}
+
+function handleVidSelect(e) {
+  addPendingVideo(e.target.files[0]);
+  e.target.value = '';
+}
+function handleVidDrop(e) {
+  e.preventDefault();
+  document.getElementById('vidDropZone').classList.remove('border-purple-500');
+  const f = Array.from(e.dataTransfer.files).find(f => ['video/mp4','video/quicktime'].includes(f.type));
+  if (f) addPendingVideo(f);
+}
+function addPendingVideo(file) {
+  if (!file) return;
+  const MAX = 50 * 1024 * 1024;
+  if (file.size > MAX) { toast('ویڈیو max 50MB', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingVideo = {dataUrl: e.target.result, mimeType: file.type};
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    document.getElementById('vidPreview').innerHTML = `
+      <div class="bg-panel-bg rounded-lg p-3 border border-gray-600 flex items-start gap-3">
+        <video src="${e.target.result}" controls
+          class="w-32 h-20 rounded object-cover flex-shrink-0"></video>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-white truncate">${file.name}</p>
+          <p class="text-xs text-gray-400">${sizeMB} MB · ${file.type}</p>
+          <button onclick="window._pendingVideo=null;document.getElementById('vidPreview').innerHTML=''"
+            class="mt-2 text-xs text-red-400 hover:text-red-300">🗑️ Remove</button>
+        </div>
+      </div>`;
+  };
+  reader.readAsDataURL(file);
+}
+async function saveProd() {
+  const btn = document.getElementById('saveProdBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+  
+  const d = {
+    category_id: state.selectedCat,
+    name: v('fProdName'),
+    name_urdu: v('fProdUrdu'),
+    base_price: parseFloat(v('fProdPrice')) || 0,
+    brand: v('fProdBrand'),
+    model: v('fProdModel'),
+    warranty_months: parseInt(v('fProdWarranty')) || 0,
+    keywords: v('fProdKw').split(',').map(s=>s.trim()).filter(Boolean),
+    description_urdu: v('fProdDesc')
+  };
+
+  try {
+    const res = await api('/api/catalog/products', {method:'POST', body:JSON.stringify(d)});
+    const prodId = res.product ? res.product.id : res.id; // handle different responses
+
+    // Upload Images
+    if (window._pendingImages && window._pendingImages.length > 0) {
+      for (let i = 0; i < window._pendingImages.length; i++) {
+        const img = window._pendingImages[i];
+        setMediaProgress('img', Math.round((i / window._pendingImages.length) * 100), 'Uploading image ' + (i+1));
+        await api('/api/media/products/' + prodId + '/upload', {
+          method: 'POST',
+          body: JSON.stringify({
+            data: img.dataUrl,
+            mime_type: img.mimeType,
+            is_primary: i === 0
+          })
+        });
+      }
+      setMediaProgress('img', 100, 'Images done');
+    }
+
+    // Upload Video
+    if (window._pendingVideo) {
+      setMediaProgress('vid', 50, 'Uploading video...');
+      await api('/api/media/products/' + prodId + '/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          data: window._pendingVideo.dataUrl,
+          mime_type: window._pendingVideo.mimeType
+        })
+      });
+      setMediaProgress('vid', 100, 'Video done');
+    }
+
+    window._pendingImages = [];
+    window._pendingVideo = null;
+    toast('✅ Product اور Media save ہو گئی!', 'success');
+    closeModal();
+    loadProducts(state.selectedCat);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Product Save کریں'; }
+  }
+}
+
+function setMediaProgress(type, pct, label) {
+  const wrap = document.getElementById(type+'ProgressWrap');
+  const bar  = document.getElementById(type+'ProgressBar');
+  const pctEl = document.getElementById(type+'ProgressPct');
+  const lblEl = document.getElementById(type+'ProgressLabel');
+  if (!wrap) return;
+  wrap.classList.toggle('hidden', pct >= 100);
+  if (bar) bar.style.width = pct + '%';
+  if (pctEl) pctEl.textContent = pct + '%';
+  if (lblEl && label) lblEl.textContent = label;
+}
+function v(id){return document.getElementById(id)?.value?.trim()||'';}
+
+
+
+// ── ORDERS ──
+const ORDER_STATUSES=['all','pending','confirmed','processing','shipped','delivered','cancelled'];
+async function loadOrders(){
+ document.getElementById('orderTabs').innerHTML=ORDER_STATUSES.map(s=>`<button onclick="state.orderFilter='${s}';loadOrders()" class="px-4 py-1.5 rounded-full text-xs font-medium transition ${state.orderFilter===s?'bg-wa text-white':'bg-panel-card text-gray-400 hover:bg-panel-hover border border-gray-700'}">${s==='all'?'All':s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('');
+ document.getElementById('orderTable').innerHTML=spinner();
+ try{
+  const url=state.orderFilter==='all'?'/api/orders/':'/api/orders/?status='+state.orderFilter;
+  const d=await api(url); const orders=d.orders||[];
+  document.getElementById('orderTable').innerHTML=orders.length?`<table class="w-full text-sm"><thead><tr class="text-gray-400 text-xs border-b border-gray-700"><th class="p-3 text-left">Order#</th><th class="p-3 text-left">Customer</th><th class="p-3 text-left">Product</th><th class="p-3 text-right">Amount</th><th class="p-3 text-left">Status</th><th class="p-3 text-left">Date</th><th class="p-3 text-center">Actions</th></tr></thead><tbody>${orders.map(o=>`<tr class="border-b border-gray-700/50 hover:bg-panel-hover">
+   <td class="p-3 text-wa font-medium">${o.order_number||'-'}</td>
+   <td class="p-3"><div>${o.customer_name||'—'}</div><div class="text-xs text-gray-500">${o.customer_phone||''}</div></td>
+   <td class="p-3">${o.product_name||'-'}${o.variant?' ('+o.variant+')':''}</td>
+   <td class="p-3 text-right font-medium">Rs. ${o.total_amount||o.unit_price||0}</td>
+   <td class="p-3"><span class="badge ${statusColor(o.status)}">${o.status||'pending'}</span></td>
+   <td class="p-3 text-xs text-gray-400">${o.created_at?new Date(o.created_at).toLocaleDateString():'-'}</td>
+   <td class="p-3 text-center"><div class="flex items-center gap-1 justify-center">
+    <select onchange="updateOrderStatus('${o.id}',this.value)" class="bg-panel-bg border border-gray-600 rounded text-xs px-1 py-1 text-white"><option value="">Change...</option>${['pending','confirmed','processing','shipped','delivered','cancelled'].filter(s=>s!==o.status).map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+    <label class="flex items-center gap-1 text-xs text-gray-400 ml-1"><input type="checkbox" id="notify-${o.id}" checked class="rounded"> Notify</label>
+   </div></td></tr>`).join('')}</tbody></table>`:`<div class="p-8 text-center text-gray-500">No orders found</div>`;
+ }catch(e){toast('Failed to load orders','error');}
+}
+async function updateOrderStatus(id,status){
+ if(!status)return;
+ const notify=document.getElementById('notify-'+id)?.checked||false;
+ try{await api('/api/orders/'+id+'/status',{method:'PATCH',body:JSON.stringify({status,notify})});toast('Order status updated to '+status);loadOrders();}catch(e){toast(e.message,'error');}
+}
+function showOrderForm(){
+ document.getElementById('modalTitle').textContent='Create Order';
+ document.getElementById('modalBody').innerHTML=`
+  <input id="fOrdPhone" placeholder="Customer phone (+923...)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+  <input id="fOrdName" placeholder="Customer name" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+  <input id="fOrdProduct" placeholder="Product name" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+  <div class="grid grid-cols-2 gap-3 mb-3">
+   <input id="fOrdQty" type="number" value="1" placeholder="Qty" class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+   <input id="fOrdPrice" type="number" placeholder="Unit price" class="bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white">
+  </div>
+  <input id="fOrdVariant" placeholder="Variant (optional)" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+  <textarea id="fOrdNotes" placeholder="Notes" rows="2" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3"></textarea>
+  <button onclick="saveOrder()" class="w-full bg-wa hover:bg-wa-dark text-white py-2 rounded-lg text-sm font-medium">Create Order</button>`;
+}
+async function saveOrder(){
+ const d={customer_phone:v('fOrdPhone'),customer_name:v('fOrdName'),product_name:v('fOrdProduct'),quantity:parseInt(v('fOrdQty'))||1,unit_price:parseFloat(v('fOrdPrice'))||0,variant:v('fOrdVariant'),notes:v('fOrdNotes')};
+ try{const r=await api('/api/orders/',{method:'POST',body:JSON.stringify(d)});toast('Order created: '+r.order_number);closeModal();loadOrders();}catch(e){toast(e.message,'error');}
+}
+
+// ── LIVE CHAT ──
+async function startChat(){
+ loadChatList();
+ if(state.chatInterval)clearInterval(state.chatInterval);
+ state.chatInterval=setInterval(()=>{if(state.activePage==='chat')loadChatList();},5000);
+}
+async function loadChatList(){
+ try{
+  const d=await api('/api/agents/chats');
+  const sessions=d.sessions||[];
+  document.getElementById('chatList').innerHTML=sessions.length?sessions.map(s=>{
+   const ph=s.phone||s.id||'';
+   const stateLabel=s.state||'active';
+   const stColor=stateLabel==='escalated'?'bg-red-500/20 text-red-400':stateLabel==='resolved'?'bg-green-500/20 text-green-400':'bg-blue-500/20 text-blue-400';
+   return `<div onclick="selectChat('${ph}')" class="p-3 rounded-lg cursor-pointer transition ${state.selectedChat===ph?'bg-wa-darker border border-wa/30':'hover:bg-panel-hover'} border border-transparent">
+    <div class="flex justify-between items-start">
+     <div class="text-sm font-medium text-white">${ph}</div>
+     <span class="badge ${stColor}">${stateLabel}</span>
+    </div>
+    <p class="text-xs text-gray-400 mt-1 truncate">${s.last_message||s.preview||'...'}</p>
+    <p class="text-[10px] text-gray-500 mt-0.5">Turns: ${s.turn_count||0}</p>
+   </div>`;
+  }).join(''):'<p class="text-gray-500 text-sm text-center py-4">No active chats</p>';
+ }catch(e){}
+}
+async function selectChat(phone){
+ state.selectedChat=phone;
+ document.getElementById('chatHeader').innerHTML=`<span class="text-sm font-medium text-white">📱 ${phone}</span>
+  <div class="flex gap-2">
+   <button onclick="assignChat('${phone}')" class="text-xs px-3 py-1 rounded-lg bg-blue-600/20 text-blue-400 hover:bg-blue-600/30">Assign to Me</button>
+   <button onclick="resolveChat('${phone}')" class="text-xs px-3 py-1 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30">Resolve</button>
+   <button onclick="escalateChat('${phone}')" class="text-xs px-3 py-1 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600/30">Escalate</button>
+  </div>`;
+ document.getElementById('chatInput').classList.remove('hidden');
+ loadChatHistory(phone);
+ loadChatList();
+}
+async function loadChatHistory(phone){
+ document.getElementById('chatMessages').innerHTML=spinner();
+ try{
+  const d=await api('/api/agents/chats/'+encodeURIComponent(phone)+'/history');
+  const msgs=d.messages||[];
+  document.getElementById('chatMessages').innerHTML=msgs.length?msgs.map(m=>{
+   const isUser=m.role==='user';
+   return `<div class="flex ${isUser?'justify-start':'justify-end'}"><div class="${isUser?'bubble-in':'bubble-out'} px-4 py-2 max-w-[80%]"><p class="text-sm">${m.content||''}</p><p class="text-[10px] ${isUser?'text-gray-500':'text-green-200'} mt-1">${m.role}${m.timestamp?' · '+new Date(m.timestamp).toLocaleTimeString():''}</p></div></div>`;
+  }).join(''):'<p class="text-gray-500 text-sm text-center py-8">No messages</p>';
+  const el=document.getElementById('chatMessages');el.scrollTop=el.scrollHeight;
+ }catch(e){document.getElementById('chatMessages').innerHTML=`<p class="text-red-400 text-sm text-center py-8">${e.message}</p>`;}
+}
+window._chatMedia = null; // {dataUrl, mimeType, name, size, type:'image'|'video'}
+
+function setChatMedia(event, mediaType) {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  const MAX = mediaType === 'image' ? 5*1024*1024 : 50*1024*1024;
+  if (file.size > MAX) {
+    toast(mediaType === 'image' ? 'تصویر max 5MB' : 'ویڈیو max 50MB', 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._chatMedia = {
+      dataUrl: e.target.result,
+      mimeType: file.type,
+      name: file.name,
+      size: file.size,
+      type: mediaType
+    };
+    const preview = document.getElementById('chatMediaPreview');
+    const thumb   = document.getElementById('chatMediaThumb');
+    const name    = document.getElementById('chatMediaName');
+    const size    = document.getElementById('chatMediaSize');
+    preview.classList.remove('hidden');
+    name.textContent  = file.name;
+    size.textContent  = (file.size/1024/1024).toFixed(1) + ' MB';
+    if (mediaType === 'image') {
+      thumb.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+    } else {
+      thumb.innerHTML = `<video src="${e.target.result}" class="w-full h-full object-cover"></video>`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearChatMedia() {
+  window._chatMedia = null;
+  document.getElementById('chatMediaPreview').classList.add('hidden');
+  document.getElementById('chatMediaThumb').innerHTML = '';
+}
+
+async function sendAgentReply() {
+  const msg   = v('agentMsg');
+  const phone = state.selectedChat;
+  if (!phone) return;
+  if (!msg && !window._chatMedia) return;
+
+  try {
+    // If media attached — send via media endpoint
+    if (window._chatMedia) {
+      const b64 = window._chatMedia.dataUrl.split(',')[1];
+      // 1. Upload media to get URL
+      const uploadResp = await fetch('/api/media/chat/upload', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          data: b64,
+          mime_type: window._chatMedia.mimeType,
+          chat_phone: phone
+        })
+      }).then(r => r.json());
+
+      if (uploadResp.url) {
+        // 2. Send via WhatsApp with media
+        await api('/api/agents/chats/' + encodeURIComponent(phone) + '/reply', {
+          method: 'POST',
+          body: JSON.stringify({
+            message: msg || '📎',
+            agent_id: 'Admin',
+            media_url: uploadResp.url
+          })
+        });
+        toast('Media bheji gayi ✅');
+        clearChatMedia();
+      }
+    } else {
+      // Text only
+      await api('/api/agents/chats/' + encodeURIComponent(phone) + '/reply', {
+        method: 'POST',
+        body: JSON.stringify({message: msg, agent_id: 'Admin'})
+      });
+      toast('Reply sent');
+    }
+
+    document.getElementById('agentMsg').value = '';
+    loadChatHistory(phone);
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+}
+async function resolveChat(ph){try{await api('/api/agents/chats/'+encodeURIComponent(ph)+'/resolve',{method:'POST'});toast('Chat resolved');loadChatList();}catch(e){toast(e.message,'error');}}
+async function assignChat(ph){try{await api('/api/agents/chats/'+encodeURIComponent(ph)+'/assign',{method:'POST',body:JSON.stringify({agent_id:'Admin'})});toast('Assigned');loadChatList();}catch(e){toast(e.message,'error');}}
+async function escalateChat(ph){toast('Escalation handled by orchestrator','warning');}
+
+// ── BROADCAST ──
+async function loadTemplates(){
+ try{
+  const d=await api('/api/broadcast/templates');
+  const sel=document.getElementById('tplSelect');
+  sel.innerHTML='<option value="">-- Custom Message --</option>'+(d.templates||[]).map(t=>`<option value="${t}">${t.replace(/_/g,' ')}</option>`).join('');
+ }catch(e){}
+}
+async function previewTemplate(){
+ const name=document.getElementById('tplSelect').value;
+ if(!name){document.getElementById('bcPreview').textContent='Type a custom message';document.getElementById('tplVars').innerHTML='';return;}
+ try{
+  const d=await api('/api/broadcast/templates/'+name);
+  document.getElementById('bcPreview').textContent=d.preview||'';
+  document.getElementById('bcMsg').value=d.preview||'';
+  const vars=(d.preview||'').match(/\{(\w+)\}/g)||[];
+  document.getElementById('tplVars').innerHTML=vars.length?'<p class="text-xs text-gray-400 mb-1">Template Variables</p>'+vars.map(vr=>{
+   const k=vr.replace(/[{}]/g,'');
+   return `<input data-var="${k}" placeholder="${k}" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-2" oninput="updatePreview()">`;
+  }).join(''):'';
+ }catch(e){toast(e.message,'error');}
+}
+function updatePreview(){
+ let msg=document.getElementById('bcMsg').value;
+ document.querySelectorAll('[data-var]').forEach(inp=>{
+  msg=msg.replace(new RegExp('\\{'+inp.dataset.var+'\\}','g'),inp.value||'{'+inp.dataset.var+'}');
+ });
+ document.getElementById('bcPreview').textContent=msg;
+}
+async function sendBroadcast(){
+ const msg=document.getElementById('bcMsg').value.trim();
+ const lines=document.getElementById('bcRecipients').value.trim().split('\n').map(l=>l.trim()).filter(Boolean);
+ if(!msg){toast('Enter a message','error');return;}
+ if(!lines.length){toast('Enter recipients','error');return;}
+ const btn=document.getElementById('bcSendBtn'); btn.disabled=true; btn.textContent='Sending...';
+ document.getElementById('bcProgress').classList.remove('hidden');
+ document.getElementById('bcBar').style.width='30%';
+ try{
+  const d=await api('/api/broadcast/send',{method:'POST',body:JSON.stringify({recipients:lines,message:msg})});
+  document.getElementById('bcBar').style.width='100%';
+  toast(`Broadcast sent: ${d.sent||0}/${d.total||0} delivered`);
+ }catch(e){toast(e.message,'error');}
+ finally{btn.disabled=false;btn.textContent='📢 Send Broadcast';setTimeout(()=>document.getElementById('bcProgress').classList.add('hidden'),2000);}
+}
+
+// ── LEADS ──
+async function loadLeads(){
+ document.getElementById('leadsTable').innerHTML=spinner();
+ try{
+  const d=await api('/api/orders/leads');
+  const leads=d.leads||[];
+  document.getElementById('leadsTable').innerHTML=leads.length?`<table class="w-full text-sm"><thead><tr class="text-gray-400 text-xs border-b border-gray-700"><th class="p-3 text-left">Phone</th><th class="p-3 text-left">Name</th><th class="p-3 text-left">Interest</th><th class="p-3 text-center">Orders</th><th class="p-3 text-left">Last Seen</th><th class="p-3 text-center">Action</th></tr></thead><tbody>${leads.map(l=>`<tr class="border-b border-gray-700/50 hover:bg-panel-hover">
+   <td class="p-3 text-wa font-medium">${l.phone||'-'}</td>
+   <td class="p-3">${l.name||'—'}</td>
+   <td class="p-3 text-xs">${l.interest||l.product_interest||'-'}</td>
+   <td class="p-3 text-center">${l.order_count||0}</td>
+   <td class="p-3 text-xs text-gray-400">${l.last_seen?new Date(l.last_seen).toLocaleDateString():'-'}</td>
+   <td class="p-3 text-center"><a href="https://wa.me/${(l.phone||'').replace(/[^0-9]/g,'')}" target="_blank" class="text-wa hover:underline text-xs">💬 WhatsApp</a></td>
+  </tr>`).join('')}</tbody></table>`:`<div class="p-8 text-center text-gray-500">No leads yet</div>`;
+ }catch(e){toast('Failed to load leads','error');}
+}
+
+// ── RULES ──
+async function loadRules(){
+ document.getElementById('rulesTable').innerHTML=spinner();
+ try{
+  const d=await api('/api/status/diagnostics');
+  // Rules are loaded from config, we'll display them from the rule engine
+  // Since there's no direct rules API, we'll show the configured rules
+  await fetchRulesFromConfig();
+ }catch(e){toast('Failed to load rules','error');}
+}
+async function fetchRulesFromConfig(){
+ // The rule engine doesn't have a direct API route yet
+ // We show the known rules from the settings and allow testing
+ const knownRules = {
+  'location':'📍 Location info','address':'📍 Address info','timing':'🕐 Business hours','time':'🕐 Business hours',
+  'help':'🤝 Help menu','warranty':'🛡️ Warranty policy','delivery':'🚚 Delivery info',
+  'ac':'❄️ AC info','inverter':'⚡ Inverter AC','washing machine':'🫧 Washing machine',
+  'microwave':'🍽️ Microwave','iron':'👔 Iron'
+ };
+ state.rules=knownRules;
+ document.getElementById('rulesTable').innerHTML=`<table class="w-full text-sm"><thead><tr class="text-gray-400 text-xs border-b border-gray-700"><th class="p-3 text-left">Keyword</th><th class="p-3 text-left">Reply Preview</th><th class="p-3 text-center">Status</th></tr></thead><tbody>${Object.entries(knownRules).map(([k,v])=>`<tr class="border-b border-gray-700/50 hover:bg-panel-hover">
+   <td class="p-3"><span class="bg-wa/20 text-wa px-2 py-0.5 rounded text-xs font-medium">${k}</span></td>
+   <td class="p-3 text-xs text-gray-400 truncate max-w-xs">${v}</td>
+   <td class="p-3 text-center"><span class="badge bg-green-500/20 text-green-400">Active</span></td>
+  </tr>`).join('')}</tbody></table>
+  <p class="text-xs text-gray-500 mt-3 italic">Note: Rules are configured in config/settings.py. A future API route will enable live CRUD.</p>`;
+}
+function showRuleForm(){
+ document.getElementById('modalTitle').textContent='Add Rule';
+ document.getElementById('modalBody').innerHTML=`
+  <p class="text-xs text-yellow-400 mb-3">⚠️ Rules are currently managed via config/settings.py. This form is a placeholder for the upcoming Rules API.</p>
+  <input id="fRuleKw" placeholder="Keyword" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3">
+  <textarea id="fRuleReply" placeholder="Reply (Urdu)" rows="3" class="w-full bg-panel-bg border border-gray-600 rounded-lg px-3 py-2 text-sm text-white mb-3"></textarea>
+  <button disabled class="w-full bg-gray-600 text-gray-400 py-2 rounded-lg text-sm font-medium cursor-not-allowed">Save Rule (API coming soon)</button>`;
+}
+function testRule(){
+ const input=document.getElementById('ruleTestInput').value.toLowerCase().trim();
+ const result=document.getElementById('ruleTestResult');
+ if(!input){result.innerHTML='<span class="text-gray-400">Type a message to test</span>';return;}
+ let matched=false;
+ for(const [kw,reply] of Object.entries(state.rules)){
+  if(input===kw||input.includes(kw)){
+   result.innerHTML=`<div class="text-green-400 mb-1">✅ Matched: <span class="font-bold">${kw}</span></div><div class="text-gray-300 text-xs">${reply}</div>`;
+   matched=true;break;
+  }
+ }
+ if(!matched) result.innerHTML='<span class="text-yellow-400">⭕ No rule matched — will be sent to AI service</span>';
+}
+
+// ── INIT ──
+document.getElementById('agentMsg')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendAgentReply();});
+document.getElementById('bcMsg')?.addEventListener('input',()=>{document.getElementById('bcPreview').textContent=document.getElementById('bcMsg').value||'Type a message';});
+loadDashboard();
+// Health check ping every 30s
+setInterval(async()=>{try{await api('/api/status/health');document.getElementById('offlineBanner').classList.add('hidden');}catch(e){document.getElementById('offlineBanner').classList.remove('hidden');}},30000);
+
+    // ── Real-time notifications ──────────────────────────────
+    const _evtSource = new EventSource('/api/events/stream');
+    _evtSource.onmessage = e => {
+      const ev = JSON.parse(e.data);
+      if (ev.type === 'new_order') {
+        toast(`🛒 نیا آرڈر: ${ev.data.product || 'Product'} — ${ev.data.phone}`, 'success');
+        if (typeof state !== 'undefined' && state.activePage === 'orders') loadOrders();
+        else if (typeof currentPage !== 'undefined' && currentPage === 'orders') loadOrders();
+        
+        if (typeof state !== 'undefined' && state.activePage === 'dashboard') loadDashboard();
+        else if (typeof currentPage !== 'undefined' && currentPage === 'dashboard') loadDashboard();
+        
+        // Update orders badge
+        const pb = document.getElementById('pending-badge');
+        if (pb) { pb.style.display=''; pb.textContent = (parseInt(pb.textContent)||0)+1; }
+      }
+      if (ev.type === 'escalation') {
+        toast(`🚨 Escalated: ${ev.data.phone}`, 'error');
+        if (typeof state !== 'undefined' && state.activePage === 'chat') typeof loadChatList === 'function' ? loadChatList() : null;
+        else if (typeof currentPage !== 'undefined' && currentPage === 'chats') typeof loadChats === 'function' ? loadChats() : null;
+        
+        const eb = document.getElementById('escalated-badge');
+        if (eb) { eb.style.display=''; eb.textContent = (parseInt(eb.textContent)||0)+1; }
+      }
+    };
+    _evtSource.onerror = () => {
+      const el = document.getElementById('system-status-text');
+      if (el) el.textContent = 'Reconnecting...';
+    };
+    _evtSource.addEventListener('open', () => {
+      const el = document.getElementById('system-status-text');
+      if (el) el.textContent = 'Live ●';
+    });
+
+</script>
+</body>
+</html>

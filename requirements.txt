@@ -1,0 +1,22 @@
+# WhatsApp AI Enhancement Layer — Python Dependencies
+
+# Core
+flask==3.0.3
+flask-cors==4.0.0
+python-dotenv==1.0.1
+requests==2.32.3
+
+# AI
+openai>=1.52.0
+
+# WhatsApp / Twilio
+twilio==9.2.3
+
+# Session Storage
+redis==5.0.6
+
+# Optional dev tools
+gunicorn==22.0.0
+
+# Media processing
+Pillow==10.3.0
